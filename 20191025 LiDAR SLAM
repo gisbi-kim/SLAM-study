@@ -1,0 +1,62 @@
+Scan matching framework:
+    scan to scan
+    scan to model 
+
+LiDAR SLAM map type:
+    feature map:
+        14 LOAM
+        17 LOAM journal 
+        18 LeGO LOAM
+        19 Lio Mapping 
+    dense map:
+        18 SuMa:
+            construct a surfel-based map 
+            point-to-plane ICP 
+        17 Model-aided monocular visual-inertial state estimation and dense mapping
+    subsampled clouds:
+        11 Velodyne SLAM
+        16 Collar line segments for fast odometry estimation from velodyne point clouds
+    NDT-based map:
+        12 Fast and accurate scan registration through minimization of the distance between compact 3d ndt representations
+        13 Fast 3d mapping in highly dynamic environments using normal distributions transform occupancy maps
+        
+6D LiDAR SLAM:
+    scan matching:
+        ICP:
+            TYPE: 
+                scan to scan 
+            scan-to-scan registration
+        Good review:
+            07 JFR 6D SLAM—3D Mapping Outdoor Environments
+        09 Zebedee:
+            TYPE:
+                feature to feature 
+            09 Continuous 3d scan-matching with a spinning 2d laser
+            build a voxel grid 
+            each voxel compute shapes to keep only cylindrical and planar areas for matching
+        11 Velodyne SLAM:
+            TYPE: 
+                scan to model 
+            de-skew the range image along the trajectory 
+            Map:
+                build a map as a 3D grid structure containing small surfaces
+            Matching:
+                de-skewed LiDAR scan is localized with respect to that map
+        15 Pose interpolation slam for large maps using moving 3d sensors
+            TYPE: 
+                scan to model 
+            Map:
+                sparse voxelized representation of the map
+            Matching:
+                ICP
+        17 LOAM
+            TYPE:
+                feature to feature:
+                    edges and planar features
+                scan to model 
+            Map:
+                edge line 
+                planar surface 
+            Matching:
+                edge feature <-> edge line 
+                plane feature <-> planar surface
