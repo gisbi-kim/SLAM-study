@@ -1,0 +1,196 @@
+title: visual localization workshop memo
+written by: Giseop Kim (paulgkim@kaist.ac.kr)
+
+date: 2019. 10. 28
+location: visual localization workshop, ICCV19
+
+
+########################################################
+Introduction 
+
+overview (2 things):
+    1. visual place recognition 
+    2. visual localization:
+        full (6D) camera pose est.
+
+visual information retrieval 
+structural information retrieval 
+
+places over time
+
+
+########################################################
+Place Recognition (by Giorgos Tolias)
+
+유명 Datasets:
+    15 Tokyo 24/7
+    13 Pittsburg dataset 
+    11 San Francisco dataset 
+    
+Similarity: Voting approach + global descriptor:
+    embedding similarity
+    local similarity function -> 좀더 찾아보기 
+    
+Hand-crafted methods:
+    99 SIFT -> 축 정렬하는거 다시 공부하기 
+
+개념:
+    descriptor quantization:
+        clustering -> visual codebook
+
+(CNN이전) 로컬 피처 기반 리트리벌 발전 개요도:
+    BoW (just count)
+    VLAD (not count, vector!):
+        but still sparse 
+        efficient for a small codebook (8-512)
+        공부:
+            vlad computer vision 라고 검색해서 이미지창에 나오는 것들 공부하기 
+    Dense features:
+        [ref] 몇 개 있었는데 나중에 슬라이드에서 확인후 논문 리딩
+    Inverted files:
+        VLAD에서 나머지 거의 0 이기 때문에 + codebook 내에 있는 word 수가 vector dimention 이 되기 때문에 inverted 필요성
+    Selective match kernel:
+        위에서 표현을 개선하고자 했다면 매칭펑션 개선
+        ASMK:
+            aggregated selective match kernel 
+            16 IJCV tolias 
+    Spartial verification (RANSAC)
+    
+딥 시대:
+    계열 1. local 보단 global descriptor 
+    계열 2. BoW with CNN features:
+        16 ICMR 
+        NetVLAD:
+            codebook centroids are trainable parameters 
+    기타:
+        Sum pooling (SPoC descriptor):
+            simple, but works
+        Weighted sum pooling (CroW descriptor)
+        Max pooling (MAC descriptor):
+            16 MTA razavian
+        GeM descriptor (Generalized mean pooling):
+            19 PAMI radenovic
+            p 무한이면 MAC, p=1 이면 SPoC 와 같음   
+        Sum pooling 과 Max pooling 의 융합: R-MAC descriptor
+        위의 것들 퍼포먼스 비교:
+              다 비슷한데... R-MAC이 젤 높긴하군 (ResNet101기준)
+              fine tuning 하면 GeM이 젤 좋음 -> 무려 26퍼센트나 더 조아짐
+        Attention map 으로 weight:
+            17 CVPR Kim
+    그리고 DELF:
+        17 ICCV Noh
+        
+Loss function:
+    방법 1. cross entropy loss (N-way classification)
+        -> image retireval 용으로는 적합하지 않음:
+            근데 나 1000개 까진 함.           
+    방법 2. metric learning 
+    방법 3. Average precision loss (발표자는 이걸 좋아한대):
+        큰 배치쓰면 더 좋기 때문에 굳이 metric 에서 처럼 sampling 할 필요 없음 
+        19 ICCV NAVER LABS Europe Revaud Learning with Average Precision: Training Image Retrieval with a Listwise Loss
+  
+Training 전략:
+    GPS이용하면 negative 를 쉽게 정해줄 수 있지:
+        근데 조금 부정확한 것이 한계
+    그런 걸 해소하기 위해 SfM 이용하면 더 좋게 free 로 training data 를 얻을 수 있지:
+        hard positive 잡기 좋음:
+            Positive examples: images that share 3D points with the query 
+            Hard positives: positive examples not close enough to the query  
+            19 PAMI Radenovic:
+                여기 결과 그래프도 좀 보자 
+
+또 중요한 것:
+    class labeling + class label cleaning:
+        만 잘해도 성능 오름 (18 IJCV Gordo)
+
+한편: 
+    앞에서 설명한 place recognition 은 retrieval 기반인데 
+    classification 기반 approach 들도 있다:
+        16 ECCV PlaNet
+        17 ICCV Revisiting IM2GPS:
+            여러가지 시사점:
+                A to D (추후 슬라이드 참고 / 캡처도 함)
+                
+이제 google challenge 이야기:
+    한줄요약: 
+        Combining global GeM with local DELF-ASMK 한 이야기 들려줄게 
+    복습:
+        GeM-based recognition 짱짱맨
+        하지만 GeM 의 common mistakes 가 존재한다:
+            semantic 이 같지만 다른경우 (e.g,. 진짜 북극곰 vs. 북극곰 인형) 
+    그러면 ASMK-DELF + spatial verification 하자?:
+        근데 spatial verification 의 common mistakes:
+            비슷하게 생긴경우 그냥 취약
+    결론:
+        그러니까 (GeM)이랑 (ASMK-DELF + SP) 를 같이 쓰자 
+        질문: 근데 왜 슬라이드 제목이 combined "classifier" 지?
+    결과:
+        Global desc vs. voting approach (local) 승자는?:
+            18 CVPR Radenovic 
+        결론:
+            DELF기반 global desc 가 성능은 더 좋지만 메모리 10G 필요 
+            로컬 보팅 어프로치는 성능은 낮지만 메모리 1G 필요 
+
+이제 post-processing part 에 대해 이야기 해보자:
+    whitening 이라고도 부른다. 
+    1. descriptor 에 다시 PCA 먹이기:
+        효과: jointly down-weight co-occurring features 
+        10 CVPR Perronnin:
+            질문: 왜 normalization 에 굳이 power 로?
+        12 ECCV Jegou
+        19 IJCV Mukundan:
+            PCA whitening with shrinkage 
+    2. supervised whitening:
+        Mikolajczyk:    
+            (어떤 논문 인지 확인못했는데 추후 슬라이드 보고 확인)
+    결과?:
+        MAC < PCA wh. + shrink < supervised wh.
+        supervised wh.이 젤 좋군 
+    꿀팁:
+        19 IJCV Mukundan 에 보면 whitening 에 대한 추가적인 인사이트를 얻을 수 있다. (some pooling operation 의 경우 wh. 보다 좋을 수도 있다 뭐 이런얘기)
+        
+위 과정을 (1. local desc -> 2. process & aggregate (i.e., global desc) -> 3. wh (i.e., post-processing) end-to-end 로 통합하면:
+    cnnimageretrieval-pytorch github
+    
+최종 결론:
+    1. 일반적으로 instance search 기반이 cls 기반보다 좋음
+    2. 그래도 cls loss 는 intra-class variability 를 잡을 수 있다:
+        다만 pair 를 cleaning 하기 위해 랭킹 로스가 필요하다.
+    3. global desc vs. voting approach 로 보자면:
+        이건 그냥 speed, compactness vs accuracy (global desc 승) 의 trade-off 문제  
+    4. descriptor whitening 은 매우 effective 하다. 
+        
+
+아 근데 마지막으로 attacking 얘기까지 하네...:
+    이부분은 생략하도록 하자.        
+    오 코드 (19 ICCV):
+        github.com/gtolias/tma
+            
+
+########################################################
+Feature-based Visual Localization (by Torsten Sattler) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+    
+        
+
+    
